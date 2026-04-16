@@ -1,8 +1,8 @@
 # MedSync — AI-Assisted Care Routing Infrastructure for the German Healthcare System
 
-MedSync is a clinical decision support system that routes patients to the appropriate care pathway within the German statutory health insurance (GKV) context. It combines structured clinical triage logic with real German provider data, multilingual patient interaction, and HL7 FHIR R4 output for audit and interoperability compliance.
+MedSync is an AI-assisted clinical decision support system designed to guide patients toward appropriate care pathways within the German statutory health insurance (GKV) framework. It combines structured clinical triage logic with real-world German healthcare context, multilingual patient interaction, and HL7 FHIR R4–compliant outputs to support interoperability and auditability.
 
-The system is developed as part of an MSc Digital Health research project at Technische Hochschule Deggendorf, with a focus on reducing inappropriate emergency department utilisation and improving care access in rural Niederbayern.
+Developed as part of an MSc Digital Health project at Technische Hochschule Deggendorf, MedSync focuses on improving patient navigation, reducing inappropriate emergency department utilisation, and enhancing access to care in rural regions such as Niederbayern.
 
 ---
 
@@ -150,17 +150,17 @@ The clinician portal provides:
 
 ## FHIR R4 Output
 
-Each triage event produces an HL7 FHIR R4 `ClinicalImpression` resource containing:
+Each triage event generates an HL7 FHIR R4 ClinicalImpression resource that includes:
 
-- SNOMED CT and ICD-10 GM coding
-- MTS acuity score and triage colour
-- Recommended care pathway
-- Referral requirement status
-- Insurance fund
-- Out-of-hours flag
-- Full decision audit trace
+- SNOMED CT and ICD-10 GM coded clinical findings
+- MTS-based acuity score and triage category
+- Recommended care pathway (non-binding guidance)
+- Referral indication status
+- Insurance context (GKV affiliation)
+- Out-of-hours indicator
+- Complete decision audit trail for traceability
 
-This output is compatible with the German elektronische Patientenakte (ePA) under §341 SGB V and supports MDK audit processes.
+This structured output is designed to be compatible with the German elektronische Patientenakte (ePA) framework under §341 SGB V and can support transparency and documentation requirements relevant to Medizinischer Dienst (MD) review processes.
 
 ---
 
@@ -189,14 +189,14 @@ pnpm dev
 
 ## Research Context
 
-This system is developed as part of an MSc Digital Health thesis at Technische Hochschule Deggendorf. The research investigates the feasibility of AI-assisted triage routing in the German GKV context, with a focus on:
+This system is developed as part of an MSc Digital Health thesis at Technische Hochschule Deggendorf. The research investigates the feasibility and potential impact of an AI-assisted clinical triage and patient navigation system within the German statutory health insurance (GKV) context, with a focus on:
 
-- Clinical appropriateness of AI-generated pathway recommendations
-- Barriers and enablers to implementation from clinician and Krankenkassen perspectives
-- Rural healthcare access in Niederbayern
-- ER deflection potential and GKV cost implications
+Clinical appropriateness and safety of AI-supported pathway recommendations
+Barriers and enablers to implementation from clinician and Krankenkassen perspectives
+Healthcare access challenges in rural regions such as Niederbayern
+Potential to reduce inappropriate emergency department utilisation and associated GKV costs
 
-The system is a research prototype. It supports care routing decisions and does not replace physician judgment. Emergency symptoms always require immediate medical attention.
+The system is developed as a research prototype and is intended to support, not replace, clinical decision-making. It provides non-binding guidance for patient navigation, while final decisions remain with qualified healthcare professionals. Emergency symptoms always require immediate medical attention.
 
 ---
 
