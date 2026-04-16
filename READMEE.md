@@ -208,6 +208,6 @@ MedSync is a research prototype developed for academic and feasibility research 
 
 ## Author
 
-Developed by a pharmacist and MSc Digital Health student at Technische Hochschule Deggendorf, Germany.
+Chika Wilson Onyenemezu Pharmacist · MSc Digital Health Student Technische Hochschule Deggendorf, Germany
 
-Built with the German healthcare system in mind — for the patients who navigate it every day.
+Built with the German healthcare system in mind — for every patient who deserves to find the right care, in the right place, at the right time.
