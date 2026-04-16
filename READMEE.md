@@ -11,7 +11,7 @@ The system is developed as part of an MSc Digital Health research project at Tec
 | Standard                       | Implementation                                            |
 | ------------------------------ | --------------------------------------------------------- |
 | SNOMED CT                      | 65 symptom categories with clinical codes                 |
-| ICD-11                         | Diagnostic mapping for all symptom categories             |
+| ICD-10 GM                         | Diagnostic mapping for all symptom categories             |
 | Manchester Triage System (MTS) | 5-level acuity scoring (0–100) with colour classification |
 | HL7 FHIR R4                    | ClinicalImpression resource output per triage event       |
 | German referral rules          | §73 and §76 SGB V enforced in routing logic               |
@@ -110,7 +110,7 @@ Beyond single-symptom scoring, the engine detects composite clinical patterns:
 | AI Chat          | Groq API — llama-3.3-70b-versatile         |
 | Database         | Supabase (PostgreSQL + PostGIS)            |
 | Interoperability | HL7 FHIR R4                                |
-| Clinical coding  | SNOMED CT, ICD-11                          |
+| Clinical coding  | SNOMED CT, ICD-10 GM                          |
 | Charts           | Recharts                                   |
 | Hosting          | Vercel (frontend), Supabase (backend)      |
 
@@ -152,7 +152,7 @@ The clinician portal provides:
 
 Each triage event produces an HL7 FHIR R4 `ClinicalImpression` resource containing:
 
-- SNOMED CT and ICD-11 coding
+- SNOMED CT and ICD-10 GM coding
 - MTS acuity score and triage colour
 - Recommended care pathway
 - Referral requirement status
