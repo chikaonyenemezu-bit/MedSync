@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState, startTransition } from "react";
 import {
   Activity,
   Ambulance,
@@ -20,28 +20,21 @@ import {
   Video,
 } from "./icons";
 import {
-  triageEngine,
   getGermanCareContext,
   type InsuranceFund,
   type Sex,
   type Symptom,
   type GermanCareContext,
 } from "@/lib/triage";
-import { createTranslator, isRTL, type Locale } from "@/lib/i18n";
-import patientsData from "@/data/patients.json";
+import { triageEngine } from "@/lib/triage-engine";
+import { createTranslator, isRTL, type Locale, type TranslationKey } from "@/lib/i18n";
 import {
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
   LineChart,
   Line,
   XAxis,
   YAxis,
   Tooltip,
   ResponsiveContainer,
-  Legend,
 } from "recharts";
 
 type Provider = {
@@ -62,31 +55,6 @@ type Provider = {
   openingHours?: string;
   erLoad?: string;
 };
-
-type Patient = {
-  id: string;
-  name?: string;
-  age?: number;
-  sex?: string;
-  symptom?: string;
-  severity?: number;
-  chronic?: boolean;
-  emergency?: boolean;
-  city?: string;
-  zip?: string;
-  durationDays?: number;
-  fever?: boolean;
-  breathingIssue?: boolean;
-  chestTightness?: boolean;
-  neuroWarning?: boolean;
-  pregnant?: boolean;
-  childPatient?: boolean;
-  insurance?: string;
-  medications?: string;
-  allergies?: string;
-  diagnoses?: string;
-};
-
 type ChatMessage = { role: "bot" | "user"; text: string };
 
 type RankedProvider = Provider & {
@@ -103,19 +71,9 @@ type RankedProvider = Provider & {
 
 type BookingModal = { provider: RankedProvider; type: string } | null;
 
-const patients: Patient[] = Array.isArray(patientsData) ? patientsData : [];
-
 const ALL_LANGUAGES: { label: string; locale: Locale }[] = [
   { label: "English", locale: "en" },
   { label: "Deutsch", locale: "de" },
-  { label: "Français", locale: "fr" },
-  { label: "Türkçe", locale: "tr" },
-  { label: "Русский", locale: "ru" },
-  { label: "Українська", locale: "uk" },
-  { label: "हिन्दी", locale: "hi" },
-  { label: "اردو", locale: "ur" },
-  { label: "عربى", locale: "ar" },
-  { label: "فارسی", locale: "fa" },
 ];
 
 const CLINICIAN_LANGUAGES: { label: string; locale: Locale }[] = [
@@ -428,8 +386,24 @@ function rankProviders(
     .sort((a, b) => b.match - a.match);
 }
 
-function mapProviders(data: any[]): Provider[] {
-  return data.map((p: any) => ({
+type RawProvider = {
+  id: string;
+  name?: string;
+  addr_city?: string;
+  state?: string;
+  addr_postcode?: string;
+  amenity?: string;
+  specialties?: string | string[];
+  opening_hours?: string;
+  accepts_gkv?: boolean;
+  nursing_ratio?: number;
+  load_score?: number;
+  annual_cases?: number;
+  er_load?: string;
+};
+
+function mapProviders(data: RawProvider[]): Provider[] {
+  return data.map((p: RawProvider) => ({
     id: p.id,
     name: p.name || "Unknown Provider",
     city: p.addr_city,
@@ -740,14 +714,6 @@ export default function Page() {
   const chatBottomRef = useRef<HTMLDivElement | null>(null);
   const [bookingModal, setBookingModal] = useState<BookingModal>(null);
   const [feedbackModal, setFeedbackModal] = useState(false);
-  const [simulationResult, setSimulationResult] = useState<{
-    total: number;
-    virtual: number;
-    ambulatory: number;
-    hospital: number;
-    redFlags: number;
-    averageScore: number;
-  } | null>(null);
   const [overridePath, setOverridePath] = useState("");
   const [overrideReason, setOverrideReason] = useState("");
   const [auditHistory, setAuditHistory] = useState<
@@ -786,30 +752,33 @@ export default function Page() {
 
   const triage = useMemo(
     () =>
-      triageEngine({
-        age: Number(age),
-        symptom,
-        severity: Number(severity),
-        chronic: chronic === "yes",
-        emergency: emergency === "yes",
-        durationDays: Number(durationDays),
-        fever: fever === "yes",
-        breathingIssue: breathingIssue === "yes",
-        chestTightness: chestTightness === "yes",
-        neuroWarning: neuroWarning === "yes",
-        sex,
-        pregnant: pregnant === "yes",
-        childPatient: childPatient === "yes" || Number(age) < 16,
-        medications,
-        allergies,
-        diagnoses,
-        insurance,
-        radiatingPain: radiatingPain === "yes",
-        exertionalPain: exertionalPain === "yes",
-        confusion: confusion === "yes",
-        dehydration: dehydration === "yes",
-        selfHarmRisk: selfHarmRisk === "yes",
-      }),
+      triageEngine(
+        {
+          age: Number(age),
+          symptom,
+          severity: Number(severity),
+          chronic: chronic === "yes",
+          emergency: emergency === "yes",
+          durationDays: Number(durationDays),
+          fever: fever === "yes",
+          breathingIssue: breathingIssue === "yes",
+          chestTightness: chestTightness === "yes",
+          neuroWarning: neuroWarning === "yes",
+          sex,
+          pregnant: pregnant === "yes",
+          childPatient: childPatient === "yes" || Number(age) < 16,
+          medications,
+          allergies,
+          diagnoses,
+          insurance,
+          radiatingPain: radiatingPain === "yes",
+          exertionalPain: exertionalPain === "yes",
+          confusion: confusion === "yes",
+          dehydration: dehydration === "yes",
+          selfHarmRisk: selfHarmRisk === "yes",
+        },
+        locale
+      ),
     [
       age,
       symptom,
@@ -833,7 +802,7 @@ export default function Page() {
       confusion,
       dehydration,
       selfHarmRisk,
-      triageVersion,
+      locale,
     ]
   );
 
@@ -929,6 +898,7 @@ export default function Page() {
       : overridePath === "Virtual consult"
       ? "VIRTUAL CONSULT"
       : triage.title;
+
   const results = useMemo(
     () =>
       rankProviders(
@@ -940,6 +910,7 @@ export default function Page() {
       ),
     [triage.specialty, effectiveTitle, location, insurance, realProviders]
   );
+
   const TopIcon =
     effectiveTitle === "HOSPITAL ER"
       ? Ambulance
@@ -983,36 +954,11 @@ export default function Page() {
     age,
     sex,
     insurance,
+    medications,
     overridePath,
     overrideReason,
   ]);
 
-  const pathwayBarData = simulationResult
-    ? [
-        {
-          name: "Virtual",
-          value: simulationResult.virtual,
-          fill: CHART_COLORS.virtual,
-        },
-        {
-          name: "Ambulatory",
-          value: simulationResult.ambulatory,
-          fill: CHART_COLORS.ambulatory,
-        },
-        {
-          name: "Hospital ER",
-          value: simulationResult.hospital,
-          fill: CHART_COLORS.hospital,
-        },
-      ]
-    : [];
-  const pathwayPieData = simulationResult
-    ? [
-        { name: "Virtual", value: simulationResult.virtual },
-        { name: "Ambulatory", value: simulationResult.ambulatory },
-        { name: "Hospital ER", value: simulationResult.hospital },
-      ]
-    : [];
   const acuityTrendData = auditHistory
     .slice()
     .reverse()
@@ -1021,19 +967,7 @@ export default function Page() {
       score: Number(e.score),
       redFlags: Number(e.redFlags),
     }));
-  const erDeflectionSavings = simulationResult
-    ? Math.round(
-        ((simulationResult.virtual + simulationResult.ambulatory) /
-          simulationResult.total) *
-          simulationResult.total *
-          280
-      )
-    : 0;
-  const redFlagRate = simulationResult
-    ? `${Math.round(
-        (simulationResult.redFlags / simulationResult.total) * 100
-      )}%`
-    : "—";
+
   const accuracyRate =
     outcomes.total > 0
       ? `${Math.round((outcomes.accurate / outcomes.total) * 100)}%`
@@ -1046,12 +980,14 @@ export default function Page() {
     outcomes.total > 0
       ? `${Math.round((outcomes.ambulatoryShifted / outcomes.total) * 100)}%`
       : "—";
+
   const selectStyle = {
     width: "100%",
     padding: 10,
     borderRadius: 10,
     border: "1px solid #d4d4d4",
   };
+
   const mtsColors: Record<string, string> = {
     red: "#e11d2e",
     orange: "#f59e0b",
@@ -1068,6 +1004,7 @@ export default function Page() {
     const updatedHistory = [...chatHistory, userMessage];
     setChatHistory([...updatedHistory, { role: "bot", text: "..." }]);
     setChatInput("");
+
     try {
       const triageState = {
         age,
@@ -1094,19 +1031,23 @@ export default function Page() {
         insurance,
         location,
       };
+
       const apiMessages = updatedHistory.map((m) => ({
         role: m.role === "bot" ? "assistant" : "user",
         content: m.text,
       }));
+
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: apiMessages, triageState, locale }),
       });
+
       const data = await res.json();
       const botResponse =
         data.message || "I could not process that. Please try again.";
       const updates = data.updates || {};
+
       if (updates.age !== undefined) setAge(updates.age);
       if (updates.sex !== undefined) setSex(updates.sex);
       if (updates.symptom !== undefined) setSymptom(updates.symptom);
@@ -1144,6 +1085,7 @@ export default function Page() {
       if (updates.diagnoses !== undefined) setDiagnoses(updates.diagnoses);
       if (updates.insurance !== undefined) setInsurance(updates.insurance);
       if (updates.location !== undefined) setLocation(updates.location);
+
       if (updates.suggestedProviderSearch) {
         try {
           const providerRes = await fetch(
@@ -1156,6 +1098,7 @@ export default function Page() {
             setRealProviders(mapProviders(providerData));
         } catch {}
       }
+
       setChatHistory([...updatedHistory, { role: "bot", text: botResponse }]);
       setTriageVersion((v) => v + 1);
     } catch (err) {
@@ -1165,60 +1108,6 @@ export default function Page() {
         { role: "bot", text: "Something went wrong. Please try again." },
       ]);
     }
-  }
-
-  function simulatePatients(count = 100) {
-    const samplePool = Array.from(
-      { length: count },
-      (_, i) =>
-        patients[i % Math.max(1, patients.length)] || {
-          age: 40,
-          symptom: "Fever",
-          severity: 5,
-        }
-    );
-    const summary = {
-      total: samplePool.length,
-      virtual: 0,
-      ambulatory: 0,
-      hospital: 0,
-      redFlags: 0,
-      averageScore: 0,
-    };
-    let totalScore = 0;
-    samplePool.forEach((patient) => {
-      const result = triageEngine({
-        age: Number(patient.age || 40),
-        symptom: ((patient.symptom as Symptom) || "Fever") as Symptom,
-        severity: Number(patient.severity || 5),
-        chronic: !!patient.chronic,
-        emergency: !!patient.emergency,
-        durationDays: Number(patient.durationDays || 2),
-        fever: !!patient.fever,
-        breathingIssue: !!patient.breathingIssue,
-        chestTightness: !!patient.chestTightness,
-        neuroWarning: !!patient.neuroWarning,
-        sex: ((patient.sex as Sex) || "female") as Sex,
-        pregnant: !!patient.pregnant,
-        childPatient: !!patient.childPatient,
-        medications: patient.medications || "",
-        allergies: patient.allergies || "",
-        diagnoses: patient.diagnoses || "",
-        insurance: ((patient.insurance as InsuranceFund) ||
-          "AOK") as InsuranceFund,
-      });
-      totalScore += result.score;
-      if (result.title === "VIRTUAL CONSULT") summary.virtual += 1;
-      else if (
-        result.title === "AMBULATORY CARE" ||
-        result.title === "BEREITSCHAFTSDIENST"
-      )
-        summary.ambulatory += 1;
-      else summary.hospital += 1;
-      if (result.redFlags.length > 0) summary.redFlags += 1;
-    });
-    summary.averageScore = Math.round(totalScore / samplePool.length);
-    setSimulationResult(summary);
   }
 
   function handleBooking(provider: RankedProvider, type: string) {
@@ -1253,7 +1142,6 @@ export default function Page() {
         direction: rtl ? "rtl" : "ltr",
       }}
     >
-      {/* Nav */}
       <nav
         style={{
           background: "#fff",
@@ -1303,6 +1191,7 @@ export default function Page() {
               </div>
             </div>
           </div>
+
           <div
             style={{
               display: "flex",
@@ -1330,10 +1219,10 @@ export default function Page() {
             >
               <User size={16} /> {t("nav.patientApp")}
             </button>
+
             <button
               onClick={() => {
                 setView("clinician");
-                if (!simulationResult) simulatePatients(100);
                 if (locale !== "en" && locale !== "de") setLocale("en");
               }}
               style={{
@@ -1404,7 +1293,6 @@ export default function Page() {
               alignItems: "start",
             }}
           >
-            {/* LEFT */}
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
               <SectionCard
                 style={{
@@ -1442,6 +1330,7 @@ export default function Page() {
                     {t("chat.powered")}
                   </div>
                 </div>
+
                 <div
                   style={{
                     flex: 1,
@@ -1485,6 +1374,7 @@ export default function Page() {
                   ))}
                   <div ref={chatBottomRef} />
                 </div>
+
                 <form
                   onSubmit={handleChatSubmit}
                   style={{
@@ -1673,7 +1563,7 @@ export default function Page() {
                               {SYMPTOM_GROUPS.map((group) => (
                                 <optgroup
                                   key={group.categoryKey}
-                                  label={t(group.categoryKey as any)}
+                                  label={t(group.categoryKey as TranslationKey)}
                                 >
                                   {group.symptoms.map((s) => (
                                     <option key={s} value={s}>
@@ -1914,6 +1804,7 @@ export default function Page() {
                           {field.node}
                         </div>
                       ))}
+
                       <div style={{ gridColumn: "1 / -1" }}>
                         <label
                           style={{
@@ -1939,6 +1830,7 @@ export default function Page() {
                           }}
                         />
                       </div>
+
                       <div>
                         <label
                           style={{
@@ -1955,6 +1847,7 @@ export default function Page() {
                           style={selectStyle}
                         />
                       </div>
+
                       <div>
                         <label
                           style={{
@@ -1972,6 +1865,7 @@ export default function Page() {
                         />
                       </div>
                     </div>
+
                     <div
                       style={{
                         fontSize: 13,
@@ -1985,6 +1879,7 @@ export default function Page() {
                       <strong>{t("profile.coverageNote")}:</strong>{" "}
                       {triage.coverageNote}
                     </div>
+
                     <div style={{ marginTop: 16 }}>
                       <AppButton
                         primary
@@ -2003,7 +1898,6 @@ export default function Page() {
               </SectionCard>
             </div>
 
-            {/* RIGHT */}
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
               {symptom ? (
                 <>
@@ -2185,6 +2079,7 @@ export default function Page() {
                           </div>
                         </div>
                       </div>
+
                       <div style={{ textAlign: "right" }}>
                         <div style={{ fontSize: 24, fontWeight: 700 }}>
                           {triage.score}/100
@@ -2413,7 +2308,6 @@ export default function Page() {
                 </SectionCard>
               )}
 
-              {/* Providers */}
               <div
                 style={{ display: "flex", flexDirection: "column", gap: 16 }}
               >
@@ -2532,11 +2426,13 @@ export default function Page() {
                               </span>
                             )}
                         </div>
+
                         <h4
                           style={{ margin: 0, fontSize: 18, fontWeight: 700 }}
                         >
                           {provider.name}
                         </h4>
+
                         <div
                           style={{
                             display: "flex",
@@ -2587,6 +2483,7 @@ export default function Page() {
                               <span>🕐 {provider.openingHours}</span>
                             )}
                         </div>
+
                         {provider.specialties &&
                           provider.specialties.length > 0 && (
                             <div
@@ -2627,6 +2524,7 @@ export default function Page() {
                             </div>
                           )}
                       </div>
+
                       <div
                         style={{
                           textAlign: "right",
@@ -2661,6 +2559,7 @@ export default function Page() {
                         )}
                       </div>
                     </div>
+
                     <div
                       style={{
                         display: "flex",
@@ -2682,6 +2581,7 @@ export default function Page() {
                           {t("providers.bookAppointment")}
                         </AppButton>
                       )}
+
                       {effectiveTitle === "VIRTUAL CONSULT" &&
                         provider.telemedicineAvailable && (
                           <AppButton
@@ -2698,6 +2598,7 @@ export default function Page() {
                             {t("providers.startTelemed")}
                           </AppButton>
                         )}
+
                       <AppButton
                         onClick={() => handleBooking(provider, "Referral")}
                         style={{ padding: "10px 18px" }}
@@ -2745,13 +2646,13 @@ export default function Page() {
               width: "fit-content",
             }}
           >
-            {[
+            {([ 
               { key: "analytics", label: "Analytics" },
               { key: "kasse", label: "Krankenkassen-Cockpit" },
-            ].map((tab) => (
+            ] as { key: "analytics" | "kasse"; label: string }[]).map((tab) => (
               <button
                 key={tab.key}
-                onClick={() => setClinicianTab(tab.key as any)}
+                onClick={() => setClinicianTab(tab.key)}
                 style={{
                   padding: "8px 20px",
                   borderRadius: 999,
@@ -2772,161 +2673,6 @@ export default function Page() {
 
           {clinicianTab === "analytics" && (
             <>
-              {simulationResult && (
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-                    gap: 16,
-                    marginBottom: 28,
-                  }}
-                >
-                  <MetricCard
-                    label={t("clinician.totalIntake")}
-                    value={simulationResult.total}
-                  />
-                  <MetricCard
-                    label={t("clinician.virtualRouted")}
-                    value={simulationResult.virtual}
-                    color={CHART_COLORS.virtual}
-                    sub={`${Math.round(
-                      (simulationResult.virtual / simulationResult.total) * 100
-                    )}${t("clinician.ofIntake")}`}
-                  />
-                  <MetricCard
-                    label={t("clinician.ambulatoryRouted")}
-                    value={simulationResult.ambulatory}
-                    color={CHART_COLORS.ambulatory}
-                    sub={`${Math.round(
-                      (simulationResult.ambulatory / simulationResult.total) *
-                        100
-                    )}${t("clinician.ofIntake")}`}
-                  />
-                  <MetricCard
-                    label={t("clinician.erEscalations")}
-                    value={simulationResult.hospital}
-                    color={CHART_COLORS.hospital}
-                    sub={`${Math.round(
-                      (simulationResult.hospital / simulationResult.total) * 100
-                    )}${t("clinician.ofIntake")}`}
-                  />
-                  <MetricCard
-                    label={t("clinician.redFlagRate")}
-                    value={redFlagRate}
-                    color={CHART_COLORS.redFlag}
-                    sub={`${simulationResult.redFlags} ${t(
-                      "clinician.casesFlagged"
-                    )}`}
-                  />
-                  <MetricCard
-                    label={t("clinician.erSavings")}
-                    value={`€${erDeflectionSavings.toLocaleString()}`}
-                    color="#8b5cf6"
-                    sub={t("clinician.savingsNote")}
-                  />
-                </div>
-              )}
-
-              {simulationResult && (
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
-                    gap: 24,
-                    marginBottom: 28,
-                  }}
-                >
-                  <SectionCard style={{ padding: 24 }}>
-                    <div
-                      style={{
-                        fontWeight: 700,
-                        fontSize: 16,
-                        marginBottom: 20,
-                      }}
-                    >
-                      {t("clinician.pathwayBar")}
-                    </div>
-                    <ResponsiveContainer width="100%" height={240}>
-                      <BarChart data={pathwayBarData} barSize={48}>
-                        <XAxis
-                          dataKey="name"
-                          tick={{ fontSize: 13 }}
-                          axisLine={false}
-                          tickLine={false}
-                        />
-                        <YAxis
-                          tick={{ fontSize: 12 }}
-                          axisLine={false}
-                          tickLine={false}
-                        />
-                        <Tooltip
-                          contentStyle={{
-                            borderRadius: 12,
-                            border: "1px solid rgba(0,0,0,0.08)",
-                            fontSize: 13,
-                          }}
-                          cursor={{ fill: "rgba(0,0,0,0.04)" }}
-                        />
-                        <Bar dataKey="value" radius={[6, 6, 0, 0]}>
-                          {pathwayBarData.map((entry, i) => (
-                            <Cell key={i} fill={entry.fill} />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </SectionCard>
-                  <SectionCard style={{ padding: 24 }}>
-                    <div
-                      style={{
-                        fontWeight: 700,
-                        fontSize: 16,
-                        marginBottom: 20,
-                      }}
-                    >
-                      {t("clinician.pathwayDonut")}
-                    </div>
-                    <ResponsiveContainer width="100%" height={240}>
-                      <PieChart>
-                        <Pie
-                          data={pathwayPieData}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={60}
-                          outerRadius={100}
-                          paddingAngle={3}
-                          dataKey="value"
-                        >
-                          {pathwayPieData.map((_, i) => (
-                            <Cell
-                              key={i}
-                              fill={
-                                [
-                                  CHART_COLORS.virtual,
-                                  CHART_COLORS.ambulatory,
-                                  CHART_COLORS.hospital,
-                                ][i]
-                              }
-                            />
-                          ))}
-                        </Pie>
-                        <Tooltip
-                          contentStyle={{
-                            borderRadius: 12,
-                            border: "1px solid rgba(0,0,0,0.08)",
-                            fontSize: 13,
-                          }}
-                        />
-                        <Legend
-                          iconType="circle"
-                          iconSize={10}
-                          wrapperStyle={{ fontSize: 13 }}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </SectionCard>
-                </div>
-              )}
-
               {acuityTrendData.length > 1 && (
                 <SectionCard style={{ padding: 24, marginBottom: 28 }}>
                   <div
@@ -3005,12 +2751,6 @@ export default function Page() {
                   label={t("clinician.bookingsCompleted")}
                   value={outcomes.bookingsCompleted}
                   color="#f59e0b"
-                />
-                <MetricCard
-                  label={t("clinician.avgAcuity")}
-                  value={simulationResult?.averageScore ?? "—"}
-                  color="#171717"
-                  sub="across simulated patients"
                 />
               </div>
 
@@ -3162,57 +2902,6 @@ export default function Page() {
                   powered by MedSync AI
                 </div>
               </SectionCard>
-
-              {simulationResult && (
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-                    gap: 16,
-                  }}
-                >
-                  <MetricCard
-                    label="ER-Vermeidung (Quartal)"
-                    value={`€${(erDeflectionSavings * 3).toLocaleString()}`}
-                    color="#10b981"
-                    sub="Hochrechnung auf Quartalsbasis"
-                  />
-                  <MetricCard
-                    label="DRG-Kosteneinsparung"
-                    value={`€${(erDeflectionSavings * 2.8).toLocaleString()}`}
-                    color="#3b82f6"
-                    sub="Ø €784/vermiedener stationärer Fall"
-                  />
-                  <MetricCard
-                    label="§ 65a Bonusprogramm"
-                    value={`${Math.round(
-                      (simulationResult.virtual / simulationResult.total) * 100
-                    )}%`}
-                    color="#8b5cf6"
-                    sub="Patienten in digitalem Erstkontakt"
-                  />
-                  <MetricCard
-                    label="116 117 Entlastung"
-                    value={
-                      simulationResult.ambulatory + simulationResult.virtual
-                    }
-                    color="#f59e0b"
-                    sub="Fälle ohne KBD-Anruf gelöst"
-                  />
-                  <MetricCard
-                    label="Selektivvertrag-Compliance"
-                    value="—"
-                    color="#e11d2e"
-                    sub="Aktivierung nach Netzwerk-Upload"
-                  />
-                  <MetricCard
-                    label="MDK-Audit bereit"
-                    value="✓"
-                    color="#10b981"
-                    sub="FHIR R4 + ICD-10-GM vollständig"
-                  />
-                </div>
-              )}
 
               <SectionCard style={{ padding: 24 }}>
                 <div
@@ -3371,7 +3060,6 @@ export default function Page() {
         </section>
       )}
 
-      {/* Booking modal */}
       {bookingModal && (
         <div
           style={{
@@ -3425,7 +3113,6 @@ export default function Page() {
         </div>
       )}
 
-      {/* Feedback modal */}
       {feedbackModal && (
         <div
           style={{
