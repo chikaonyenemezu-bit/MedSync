@@ -7,7 +7,8 @@
 // are German institutions and appear in both languages.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import type { GermanCareContext, Locale } from "./types";
+import type { GermanCareContext, } from "./triage";
+import type { Locale } from "./i18n";
 
 // Day names in both languages — index matches getDay() (0 = Sunday)
 const DAY_NAMES: Record<Locale, readonly string[]> = {

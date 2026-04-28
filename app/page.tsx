@@ -20,13 +20,15 @@ import {
   Video,
 } from "./icons";
 import {
-  getGermanCareContext,
   type InsuranceFund,
   type Sex,
   type Symptom,
   type GermanCareContext,
 } from "@/lib/triage";
+import { getGermanCareContext } from "@/lib/careContext";
 import { triageEngine } from "@/lib/triage-engine";
+import { supabase } from "@/lib/supabase";
+import { encryptFields } from "@/lib/crypto";
 import { createTranslator, isRTL, type Locale, type TranslationKey } from "@/lib/i18n";
 import {
   LineChart,
@@ -54,6 +56,8 @@ type Provider = {
   insuranceAccepted?: string[];
   openingHours?: string;
   erLoad?: string;
+  phone?: string;
+  website?: string;
 };
 type ChatMessage = { role: "bot" | "user"; text: string };
 
@@ -671,6 +675,7 @@ function LanguageSelector({
 
 export default function Page() {
   const [locale, setLocale] = useState<Locale>("en");
+  const [sessionId] = useState(() => crypto.randomUUID());
   const t = createTranslator(locale);
   const rtl = isRTL(locale);
 
@@ -740,11 +745,14 @@ export default function Page() {
 
   useEffect(() => {
     const timer = setInterval(
-      () => setCareContext(getGermanCareContext()),
-      60000
+      () => setCareContext(getGermanCareContext(locale)),
+       60000
     );
     return () => clearInterval(timer);
-  }, []);
+  }, [locale]);
+  useEffect(() => {
+  setCareContext(getGermanCareContext(locale));
+}, [locale]);
 
   useEffect(() => {
     setChatHistory([{ role: "bot", text: t("chat.greeting") }]);
@@ -926,6 +934,45 @@ export default function Page() {
 
   useEffect(() => {
     if (!symptom) return;
+
+    encryptFields({
+      symptom,
+      age: String(age),
+      sex,
+      medications: medications || "",
+      allergies: allergies || "",
+      diagnoses: diagnoses || "",
+      location: location || "",
+    }).then((encrypted) => {
+      supabase.from("triage_events").insert({
+        session_id: sessionId,
+        age: encrypted.age,
+        symptom: encrypted.symptom,
+        sex: encrypted.sex,
+        medications: encrypted.medications,
+        allergies: encrypted.allergies,
+        diagnoses: encrypted.diagnoses,
+        location: encrypted.location,
+        insurance,
+        severity: Number(severity) || null,
+        duration_days: Number(durationDays) || null,
+        pathway: triage.pathway,
+        title: triage.title,
+        score: triage.score,
+        triage_color: triage.triageColor,
+        red_flags: triage.redFlags,
+        specialty: triage.specialty,
+        german_specialty: triage.germanSpecialty,
+        icd10_code: triage.icd10Code,
+        snomed_code: triage.snomedCode,
+        override_path: overridePath || null,
+        override_reason: overrideReason || null,
+        locale,
+      }).then(({ error }: { error: { message: string } | null }) => {
+        if (error) console.error("Failed to save triage event:", error.message);
+      });
+    });
+
     setAuditHistory((prev) =>
       [
         {
@@ -949,14 +996,27 @@ export default function Page() {
     triage.title,
     triage.specialty,
     triage.score,
+    triage.redFlags,
     triage.redFlags.length,
+    triage.pathway,
+    triage.triageColor,
+    triage.germanSpecialty,
+    triage.icd10Code,
+    triage.snomedCode,
     symptom,
     age,
     sex,
     insurance,
     medications,
+    allergies,
+    diagnoses,
+    severity,
+    durationDays,
+    locale,
+    location,
     overridePath,
     overrideReason,
+    sessionId,
   ]);
 
   const acuityTrendData = auditHistory
@@ -1275,8 +1335,8 @@ export default function Page() {
               <div>
                 <div style={{ fontWeight: 700, marginBottom: 2 }}>
                   {careContext.isWeekend
-                    ? "Weekend — Outside GP hours"
-                    : "Outside office hours"}
+                  ? locale === "de" ? "Wochenende — Außerhalb der Sprechzeiten" : "Weekend — Outside GP hours"
+                  : locale === "de" ? "Außerhalb der Sprechzeiten" : "Outside office hours"}
                 </div>
                 <div style={{ fontWeight: 400 }}>
                   {careContext.recommendation}
@@ -2181,8 +2241,7 @@ export default function Page() {
                             color: "#92400e",
                           }}
                         >
-                          <strong>⚠ Medication risk detected</strong> — see red
-                          flags above for details.
+                          <strong>⚠ {locale === "de" ? "Medikationsrisiko erkannt" : "Medication risk detected"}</strong> — {locale === "de" ? "Details siehe Warnhinweise oben." : "see red flags above for details."}
                         </div>
                       )}
 
@@ -2229,7 +2288,7 @@ export default function Page() {
                         ))
                       ) : (
                         <li>
-                          No follow-up questions required for this presentation.
+                          {locale === "de" ? "Keine Rückfragen für diese Präsentation erforderlich." : "No follow-up questions required for this presentation."}
                         </li>
                       )}
                     </ul>
@@ -2259,7 +2318,7 @@ export default function Page() {
                         marginBottom: 14,
                       }}
                     >
-                      <strong>Disclaimer:</strong> {t("triage.disclaimer")}
+                      <strong>{locale === "de" ? "Haftungsausschluss:" : "Disclaimer:"}</strong> {t("triage.disclaimer")}
                     </div>
                     <div style={{ fontWeight: 700, marginBottom: 6 }}>
                       {t("triage.decisionTrace")}
@@ -2290,7 +2349,7 @@ export default function Page() {
                       color: "#171717",
                     }}
                   >
-                    Ready to help
+                    {locale === "de" ? "Bereit zu helfen" : "Ready to help"}
                   </div>
                   <div
                     style={{
@@ -2301,9 +2360,9 @@ export default function Page() {
                       margin: "0 auto",
                     }}
                   >
-                    Describe your symptoms in the chat or fill in the patient
-                    profile to receive a personalised care pathway
-                    recommendation.
+                    {locale === "de"
+                      ? "Beschreiben Sie Ihre Symptome im Chat oder füllen Sie das Patientenprofil aus, um eine personalisierte Versorgungsempfehlung zu erhalten."
+                      : "Describe your symptoms in the chat or fill in the patient profile to receive a personalised care pathway recommendation."}       
                   </div>
                 </SectionCard>
               )}
@@ -2479,9 +2538,23 @@ export default function Page() {
                             </span>
                           )}
                           {provider.openingHours &&
-                            provider.openingHours !== "08:00 - 18:00" && (
-                              <span>🕐 {provider.openingHours}</span>
-                            )}
+  provider.openingHours !== "08:00 - 18:00" && (
+    <span>🕐 {provider.openingHours}</span>
+  )}
+{provider.phone && (
+  <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+    📞 <a href={`tel:${provider.phone}`} style={{ color: "#525252", textDecoration: "none" }}>
+      {provider.phone}
+    </a>
+  </span>
+)}
+{provider.website && (
+  <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+    🌐 <a href={provider.website} target="_blank" rel="noopener noreferrer" style={{ color: "#3b82f6", textDecoration: "none", fontSize: 12 }}>
+      Website
+    </a>
+  </span>
+)}
                         </div>
 
                         {provider.specialties &&
@@ -2524,7 +2597,6 @@ export default function Page() {
                             </div>
                           )}
                       </div>
-
                       <div
                         style={{
                           textAlign: "right",
@@ -2678,8 +2750,7 @@ export default function Page() {
                   <div
                     style={{ fontWeight: 700, fontSize: 16, marginBottom: 20 }}
                   >
-                    {t("clinician.acuityTrend")} — last {acuityTrendData.length}{" "}
-                    events
+                    {t("clinician.acuityTrend")} — {locale === "de" ? `letzte ${acuityTrendData.length} Ereignisse` : `last ${acuityTrendData.length} events`}
                   </div>
                   <ResponsiveContainer width="100%" height={200}>
                     <LineChart data={acuityTrendData}>
