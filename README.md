@@ -118,20 +118,13 @@ Beyond single-symptom scoring, the engine detects composite clinical patterns:
 
 ## Multilingual Support
 
-The patient interface supports 10 languages, reflecting the linguistic diversity of patients in the German healthcare system:
+The patient interface supports 2 languages, reflecting the linguistic diversity of patients in the German healthcare system:
 
 | Language  | Locale | RTL |
 | --------- | ------ | --- |
 | English   | en     | No  |
 | German    | de     | No  |
-| French    | fr     | No  |
-| Turkish   | tr     | No  |
-| Russian   | ru     | No  |
-| Ukrainian | uk     | No  |
-| Hindi     | hi     | No  |
-| Urdu      | ur     | Yes |
-| Arabic    | ar     | Yes |
-| Farsi     | fa     | Yes |
+
 
 The AI chat layer responds in the selected language via locale-specific system prompts. The clinician portal is restricted to English and German.
 
