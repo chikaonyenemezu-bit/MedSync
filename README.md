@@ -195,12 +195,11 @@ The system is developed as a research prototype and is intended to support, not 
 
 ## Disclaimer
 
-MedSync is a research prototype developed for academic and feasibility research purposes. It is not a certified medical device and does not constitute medical advice. All triage recommendations are decision support only and must be validated by qualified healthcare professionals before clinical use.
+MedSync is a research prototype. It is not a certified medical device and does not constitute medical advice. All triage recommendations are decision support only and must be validated by qualified healthcare professionals before clinical use.
 
 ---
 
 ## Author
 
-Chika Wilson Onyenemezu Pharmacist · MSc Digital Health Student Technische Hochschule Deggendorf, Germany
-
+Pharm Chika Wilson Onyenemezu · MSc Industrial Pharmacy · MSc Digital Health.
 Built with the German healthcare system in mind — for every patient who deserves to find the right care, in the right place, at the right time.
