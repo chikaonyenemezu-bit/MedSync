@@ -7,9 +7,21 @@
 
 let _sessionKey: CryptoKey | null = null;
 
+function isWebCryptoAvailable(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    typeof crypto !== "undefined" &&
+    typeof crypto.subtle !== "undefined"
+  );
+}
+
 // Generate or retrieve the session encryption key
 async function getSessionKey(): Promise<CryptoKey> {
   if (_sessionKey) return _sessionKey;
+
+  if (!isWebCryptoAvailable()) {
+    throw new Error("Web Crypto API is not available in this environment.");
+  }
 
   _sessionKey = await crypto.subtle.generateKey(
     { name: "AES-GCM", length: 256 },
@@ -23,6 +35,7 @@ async function getSessionKey(): Promise<CryptoKey> {
 // Encrypt a string value — returns base64 encoded ciphertext
 export async function encryptField(value: string | null | undefined): Promise<string | null> {
   if (!value) return null;
+  if (!isWebCryptoAvailable()) return null; // SSR fallback — skip encryption
 
   const key = await getSessionKey();
   const iv  = crypto.getRandomValues(new Uint8Array(12)); // 96-bit IV
@@ -45,6 +58,7 @@ export async function encryptField(value: string | null | undefined): Promise<st
 // Decrypt a base64 encoded ciphertext — returns original string
 export async function decryptField(encoded: string | null | undefined): Promise<string | null> {
   if (!encoded) return null;
+  if (!isWebCryptoAvailable()) return null; // SSR fallback
 
   const key = await getSessionKey();
   const combined = Uint8Array.from(atob(encoded), (c) => c.charCodeAt(0));
