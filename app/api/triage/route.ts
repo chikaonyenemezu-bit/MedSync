@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { triageEngine, type TriageInput } from "@/lib/triage";
+import { triageEngine, type TriageInput } from "@/lib/triage-engine";
 
 export async function POST(req: Request) {
   try {
