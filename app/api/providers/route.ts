@@ -107,7 +107,7 @@ function parseSearchQuery(q: string): ParsedQuery {
   return { specialty: matchedSpecialty, city };
 }
 
-export function mapProviders(data: RawProvider[]) {
+function mapProviders(data: RawProvider[]) {
   return data.map((p: RawProvider) => {
     const isHospital = p.amenity === "hospital";
 
