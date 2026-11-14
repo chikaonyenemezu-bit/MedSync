@@ -251,7 +251,7 @@ export async function POST(req: NextRequest) {
     p_actor_label: 'AI extraction',
     p_new_value: extracted as unknown as Record<string, unknown>,
     p_metadata: {
-      model: 'llama-3.3-70b-versatile',
+      model: 'openai/gpt-oss-120b',
       workflowStage: 'clinical_review',
       status: 'pending',
       fhirStatus: 'not_generated',

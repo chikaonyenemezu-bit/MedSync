@@ -83,7 +83,7 @@ export async function extractIntake(narrative: string): Promise<ExtractedData> {
   }
 
   const completion = await client.chat.completions.create({
-    model: 'llama-3.3-70b-versatile',
+    model: 'openai/gpt-oss-120b',
     max_tokens: 1024,
     temperature: 0.1,
     messages: [
